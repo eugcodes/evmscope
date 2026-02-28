@@ -1,0 +1,68 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bg-primary: #0d1117;
+  --color-bg-secondary: #161b22;
+  --color-bg-tertiary: #21262d;
+  --color-accent: #2dd4bf;
+  --color-accent-dim: #14b8a6;
+  --color-pulse-red: #ef4444;
+  --color-signal-good: #22c55e;
+  --color-signal-fair: #eab308;
+  --color-signal-poor: #ef4444;
+  --color-text-primary: #e6edf3;
+  --color-text-secondary: #8b949e;
+  --color-border: #30363d;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    opacity: 1;
+    text-shadow: 0 0 20px rgba(45, 212, 191, 0.5);
+  }
+  50% {
+    opacity: 0.85;
+    text-shadow: 0 0 40px rgba(45, 212, 191, 0.8);
+  }
+}
+
+@keyframes pulse-ring {
+  0% {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+  100% {
+    transform: scale(1.5);
+    opacity: 0;
+  }
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow var(--pulse-duration, 1s) ease-in-out infinite;
+}
+
+.animate-pulse-ring {
+  animation: pulse-ring var(--pulse-duration, 1s) ease-out infinite;
+}

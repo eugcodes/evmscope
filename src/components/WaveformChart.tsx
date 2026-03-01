@@ -6,8 +6,8 @@ interface WaveformChartProps {
 }
 
 const LINE_COLOR = '#2dd4bf';
-const GRID_COLOR = 'rgba(48, 54, 61, 0.5)';
-const BG_COLOR = '#161b22';
+const GRID_COLOR = 'rgba(48, 54, 61, 0.3)';
+const BG_COLOR = '#0d1117';
 
 export function WaveformChart({ waveform, isActive }: WaveformChartProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -31,11 +31,11 @@ export function WaveformChart({ waveform, isActive }: WaveformChartProps) {
       const w = rect.width;
       const h = rect.height;
 
-      // Background
+      // Background matches page
       ctx.fillStyle = BG_COLOR;
       ctx.fillRect(0, 0, w, h);
 
-      // Grid
+      // Subtle horizontal grid only
       ctx.strokeStyle = GRID_COLOR;
       ctx.lineWidth = 0.5;
       for (let y = 0; y < h; y += h / 4) {
@@ -44,20 +44,6 @@ export function WaveformChart({ waveform, isActive }: WaveformChartProps) {
         ctx.lineTo(w, y);
         ctx.stroke();
       }
-      for (let x = 0; x < w; x += w / 10) {
-        ctx.beginPath();
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, h);
-        ctx.stroke();
-      }
-
-      // Center line
-      ctx.strokeStyle = 'rgba(48, 54, 61, 0.8)';
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(0, h / 2);
-      ctx.lineTo(w, h / 2);
-      ctx.stroke();
 
       const data = waveform.length > 0 ? waveform : prevWaveformRef.current;
       if (waveform.length > 0) {
@@ -65,12 +51,11 @@ export function WaveformChart({ waveform, isActive }: WaveformChartProps) {
       }
 
       if (data.length < 2) {
-        // No data message
-        ctx.fillStyle = '#8b949e';
-        ctx.font = '14px -apple-system, sans-serif';
+        ctx.fillStyle = 'rgba(139, 148, 158, 0.4)';
+        ctx.font = '13px -apple-system, sans-serif';
         ctx.textAlign = 'center';
         ctx.fillText(
-          isActive ? 'Waiting for signal...' : 'No data',
+          isActive ? 'Waiting for signal...' : '',
           w / 2,
           h / 2 + 5,
         );
@@ -78,11 +63,10 @@ export function WaveformChart({ waveform, isActive }: WaveformChartProps) {
         return;
       }
 
-      // Draw waveform
-      const padding = 16;
+      // Waveform
+      const padding = 12;
       const plotH = h - padding * 2;
 
-      // Find amplitude range
       let min = Infinity, max = -Infinity;
       for (const v of data) {
         if (v < min) min = v;
@@ -90,13 +74,11 @@ export function WaveformChart({ waveform, isActive }: WaveformChartProps) {
       }
       const range = max - min || 1;
 
-      // Glow effect
       ctx.shadowColor = LINE_COLOR;
-      ctx.shadowBlur = 8;
+      ctx.shadowBlur = 6;
 
-      // Line
       ctx.strokeStyle = LINE_COLOR;
-      ctx.lineWidth = 2;
+      ctx.lineWidth = 1.5;
       ctx.lineJoin = 'round';
       ctx.lineCap = 'round';
       ctx.beginPath();
@@ -113,10 +95,10 @@ export function WaveformChart({ waveform, isActive }: WaveformChartProps) {
       }
       ctx.stroke();
 
-      // Gradient fill under the line
+      // Gradient fill
       ctx.shadowBlur = 0;
       const gradient = ctx.createLinearGradient(0, 0, 0, h);
-      gradient.addColorStop(0, 'rgba(45, 212, 191, 0.15)');
+      gradient.addColorStop(0, 'rgba(45, 212, 191, 0.08)');
       gradient.addColorStop(1, 'rgba(45, 212, 191, 0)');
 
       ctx.lineTo(w, h);
@@ -134,17 +116,11 @@ export function WaveformChart({ waveform, isActive }: WaveformChartProps) {
   }, [waveform, isActive]);
 
   return (
-    <div className="w-full overflow-hidden rounded-xl border border-border bg-bg-secondary">
-      <div className="flex items-center justify-between border-b border-border px-4 py-2">
-        <h3 className="text-sm font-medium text-text-secondary">Pulse Waveform</h3>
-        <span className="text-xs text-text-secondary">~10s window</span>
-      </div>
-      <canvas
-        ref={canvasRef}
-        className="h-40 w-full sm:h-48"
-        aria-label="Real-time pulse waveform chart"
-        role="img"
-      />
-    </div>
+    <canvas
+      ref={canvasRef}
+      className="h-28 w-full rounded-lg sm:h-32"
+      aria-label="Pulse waveform"
+      role="img"
+    />
   );
 }

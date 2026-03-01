@@ -40,10 +40,10 @@ export function Onboarding({ forceShow, onDismiss }: OnboardingProps) {
         {/* Header */}
         <div className="mb-5 text-center">
           <h2 id="onboarding-title" className="text-xl font-bold text-text-primary">
-            Welcome to PulseCam
+            PulseCam
           </h2>
           <p className="mt-1.5 text-sm text-text-secondary">
-            Measure your heart rate using just your camera — no contact required.
+            Measures your heart rate using your camera.
           </p>
         </div>
 
@@ -54,9 +54,9 @@ export function Onboarding({ forceShow, onDismiss }: OnboardingProps) {
               1
             </div>
             <div>
-              <p className="text-sm font-medium text-text-primary">Camera Analysis</p>
+              <p className="text-sm font-medium text-text-primary">Video Analysis</p>
               <p className="text-xs text-text-secondary">
-                Detects subtle skin color changes caused by blood flow.
+                Blood flow causes subtle changes in skin color.
               </p>
             </div>
           </div>
@@ -68,7 +68,7 @@ export function Onboarding({ forceShow, onDismiss }: OnboardingProps) {
             <div>
               <p className="text-sm font-medium text-text-primary">Signal Processing</p>
               <p className="text-xs text-text-secondary">
-                rPPG algorithms extract the pulse signal in real time.
+                rPPG algorithms extract your pulse in real time.
               </p>
             </div>
           </div>
@@ -78,9 +78,9 @@ export function Onboarding({ forceShow, onDismiss }: OnboardingProps) {
               3
             </div>
             <div>
-              <p className="text-sm font-medium text-text-primary">Live BPM</p>
+              <p className="text-sm font-medium text-text-primary">Live pulse waveform</p>
               <p className="text-xs text-text-secondary">
-                Heart rate displayed with a live pulse waveform.
+                Displays your heart rate with a live pulse waveform.
               </p>
             </div>
           </div>

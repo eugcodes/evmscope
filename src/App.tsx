@@ -11,7 +11,6 @@ import { Controls } from './components/Controls';
 export default function App() {
   const camera = useCamera();
   const pulse = usePulseDetection(camera.videoRef, camera.isActive);
-  const [showOverlay, setShowOverlay] = useState(true);
   const [showHelp, setShowHelp] = useState(false);
 
   const handleStartCamera = useCallback(async () => {
@@ -70,9 +69,7 @@ export default function App() {
         {/* Camera */}
         <CameraFeed
           videoRef={camera.videoRef}
-          faceROI={pulse.faceROI}
           faceDetected={pulse.faceDetected}
-          showOverlay={showOverlay}
           isActive={camera.isActive}
         />
 
@@ -88,8 +85,6 @@ export default function App() {
             devices={camera.devices}
             selectedDevice={camera.selectedDevice}
             onSelectDevice={camera.selectDevice}
-            showOverlay={showOverlay}
-            onToggleOverlay={() => setShowOverlay((s) => !s)}
           />
         </div>
 

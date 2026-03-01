@@ -13,31 +13,29 @@ export function BPMDisplay({ bpm, state, confidence }: BPMDisplayProps) {
   return (
     <div className="flex flex-col items-center" aria-live="polite">
       {/* BPM Value */}
-      <div className="relative flex items-baseline gap-1">
-        {isShowingBpm && (
+      {isShowingBpm ? (
+        <div className="relative flex items-baseline gap-1">
           <div
             className="animate-pulse-ring absolute inset-0 rounded-full border-2 border-accent"
             style={{ '--pulse-duration': `${pulseDuration}s` } as React.CSSProperties}
           />
-        )}
-
-        <span
-          className={`text-7xl font-bold tracking-tighter sm:text-8xl ${
-            isShowingBpm
-              ? 'animate-pulse-glow text-accent'
-              : 'text-text-secondary/20'
-          }`}
-          style={
-            isShowingBpm
-              ? ({ '--pulse-duration': `${pulseDuration}s` } as React.CSSProperties)
-              : undefined
-          }
-          aria-label={bpm ? `Heart rate: ${bpm} beats per minute` : 'No reading'}
-        >
-          {isShowingBpm ? bpm : '—'}
-        </span>
-        <span className="text-lg font-medium text-text-secondary/40">BPM</span>
-      </div>
+          <span
+            className="animate-pulse-glow text-7xl font-bold tracking-tighter text-accent sm:text-8xl"
+            style={{ '--pulse-duration': `${pulseDuration}s` } as React.CSSProperties}
+            aria-label={`Heart rate: ${bpm} beats per minute`}
+          >
+            {bpm}
+          </span>
+          <span className="text-lg font-medium text-text-secondary/40">BPM</span>
+        </div>
+      ) : (
+        <div className="flex items-baseline gap-1">
+          <span className="text-4xl font-semibold tracking-tight text-text-secondary/15">
+            --
+          </span>
+          <span className="text-sm font-medium text-text-secondary/25">BPM</span>
+        </div>
+      )}
 
       {/* Status */}
       <div className="mt-1 h-5">

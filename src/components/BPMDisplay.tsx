@@ -51,7 +51,7 @@ export function BPMDisplay({ bpm, state, confidence }: BPMDisplayProps) {
           </p>
         )}
         {state === 'idle' && (
-          <p className="text-xs text-text-secondary/30">Ready</p>
+          <p className="text-xs text-text-secondary/30">Paused</p>
         )}
       </div>
     </div>

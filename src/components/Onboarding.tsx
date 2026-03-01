@@ -45,6 +45,9 @@ export function Onboarding({ forceShow, onDismiss }: OnboardingProps) {
           <p className="mt-1.5 text-sm text-text-secondary">
             Measures your heart rate using your camera.
           </p>
+          <p className="mt-1 text-xs text-text-secondary/50">
+            All processing happens locally. No data leaves your device.
+          </p>
         </div>
 
         {/* How it works */}
@@ -78,9 +81,9 @@ export function Onboarding({ forceShow, onDismiss }: OnboardingProps) {
               3
             </div>
             <div>
-              <p className="text-sm font-medium text-text-primary">Live pulse waveform</p>
+              <p className="text-sm font-medium text-text-primary">Display pulse and waveform</p>
               <p className="text-xs text-text-secondary">
-                Displays your heart rate with a live pulse waveform.
+                Displays your heart rate and live pulse waveform.
               </p>
             </div>
           </div>
@@ -96,11 +99,6 @@ export function Onboarding({ forceShow, onDismiss }: OnboardingProps) {
             <li>Wait 5–8 seconds for calibration</li>
           </ul>
         </div>
-
-        {/* Privacy */}
-        <p className="mb-5 text-center text-xs text-text-secondary/60">
-          All processing happens locally. No data leaves your device.
-        </p>
 
         {/* Dismiss */}
         <button

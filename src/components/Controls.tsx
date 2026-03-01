@@ -25,7 +25,7 @@ export function Controls({
 }: ControlsProps) {
   return (
     <div className="flex items-center justify-center gap-2">
-      {/* Measurement toggle (power icon) */}
+      {/* Measurement toggle (play/pause) */}
       <button
         onClick={cameraActive ? (isRunning ? onStopMeasure : onStartMeasure) : undefined}
         disabled={!cameraActive}
@@ -36,11 +36,15 @@ export function Controls({
               ? 'border-border/60 text-text-secondary/60 hover:bg-bg-secondary hover:text-text-secondary'
               : 'border-border/30 text-text-secondary/20 cursor-not-allowed'
         }`}
-        aria-label={isRunning ? 'Stop measuring' : 'Start measuring'}
-        title={isRunning ? 'Stop measuring' : 'Start measuring'}
+        aria-label={isRunning ? 'Pause measurement' : 'Start measurement'}
+        title={isRunning ? 'Pause' : 'Play'}
       >
         <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M5.636 5.636a9 9 0 1 0 12.728 0M12 3v9" />
+          {isRunning ? (
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 5.25v13.5m-7.5-13.5v13.5" />
+          ) : (
+            <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 0 1 0 1.972l-11.54 6.347a1.125 1.125 0 0 1-1.667-.986V5.653Z" />
+          )}
         </svg>
       </button>
 

@@ -2,7 +2,7 @@
 
 A browser-based heart rate monitor that measures your pulse in real time using your device camera and remote photoplethysmography (rPPG). No physical contact required.
 
-**[Live Demo](https://eugcodes.github.io/pulsecam/)**
+**[Live Demo](https://www.eugenekim.ca/pulsecam/)**
 
 ## How It Works
 
@@ -27,7 +27,7 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:5173/pulsecam/ in your browser.
+Open http://localhost:5173/ in your browser.
 
 ## Build
 

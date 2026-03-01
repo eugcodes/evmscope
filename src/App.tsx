@@ -60,7 +60,7 @@ export default function App() {
               </svg>
             </div>
             <div>
-              <h1 className="text-lg font-bold text-text-primary">EVMScope</h1>
+              <h1 className="text-lg font-bold text-text-primary">PulseCam</h1>
               <p className="text-xs text-text-secondary">
                 Real-Time Pulse Detection
               </p>

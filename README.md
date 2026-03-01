@@ -1,12 +1,12 @@
-# EVMScope — Real-Time Pulse Detection
+# PulseCam — Real-Time Pulse Detection
 
 A browser-based heart rate monitor that measures your pulse in real time using your device camera and remote photoplethysmography (rPPG). No physical contact required.
 
-**[Live Demo](https://eugcodes.github.io/evmscope/)**
+**[Live Demo](https://eugcodes.github.io/pulsecam/)**
 
 ## How It Works
 
-Your camera captures video of your face. With each heartbeat, blood flow causes tiny, invisible color changes in your skin. EVMScope uses the **POS (Plane-Orthogonal-to-Skin)** rPPG algorithm to detect these micro-variations and extract your heart rate — entirely in the browser.
+Your camera captures video of your face. With each heartbeat, blood flow causes tiny, invisible color changes in your skin. PulseCam uses the **POS (Plane-Orthogonal-to-Skin)** rPPG algorithm to detect these micro-variations and extract your heart rate — entirely in the browser.
 
 ### Signal Processing Pipeline
 
@@ -27,7 +27,7 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:5173/evmscope/ in your browser.
+Open http://localhost:5173/pulsecam/ in your browser.
 
 ## Build
 

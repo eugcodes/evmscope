@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 
-const STORAGE_KEY = 'evmscope-onboarding-dismissed';
+const STORAGE_KEY = 'pulsecam-onboarding-dismissed';
 
 interface OnboardingProps {
   forceShow?: boolean;
@@ -31,17 +31,17 @@ export function Onboarding({ forceShow, onDismiss }: OnboardingProps) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/70 p-4 backdrop-blur-sm"
       role="dialog"
       aria-modal="true"
       aria-labelledby="onboarding-title"
     >
-      <div className="w-full max-w-lg rounded-2xl border border-border bg-bg-secondary p-6 shadow-2xl sm:p-8">
+      <div className="my-auto w-full max-w-lg rounded-2xl border border-border bg-bg-secondary p-5 shadow-2xl sm:p-8">
         {/* Header */}
-        <div className="mb-6 text-center">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-accent/10">
+        <div className="mb-4 text-center sm:mb-6">
+          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-accent/10 sm:mb-4 sm:h-16 sm:w-16">
             <svg
-              className="h-8 w-8 text-accent"
+              className="h-6 w-6 text-accent sm:h-8 sm:w-8"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -56,7 +56,7 @@ export function Onboarding({ forceShow, onDismiss }: OnboardingProps) {
             </svg>
           </div>
           <h2 id="onboarding-title" className="text-2xl font-bold text-text-primary">
-            Welcome to EVMScope
+            Welcome to PulseCam
           </h2>
           <p className="mt-2 text-text-secondary">
             Measure your heart rate using just your camera — no contact required.
@@ -64,7 +64,7 @@ export function Onboarding({ forceShow, onDismiss }: OnboardingProps) {
         </div>
 
         {/* How it works */}
-        <div className="mb-6 space-y-4">
+        <div className="mb-4 space-y-3 sm:mb-6 sm:space-y-4">
           <div className="flex gap-3">
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-accent/10 text-sm font-bold text-accent">
               1
@@ -103,7 +103,7 @@ export function Onboarding({ forceShow, onDismiss }: OnboardingProps) {
         </div>
 
         {/* Tips */}
-        <div className="mb-6 rounded-xl bg-bg-tertiary p-4">
+        <div className="mb-4 rounded-xl bg-bg-tertiary p-3 sm:mb-6 sm:p-4">
           <h3 className="mb-2 text-sm font-semibold text-text-primary">For Best Results</h3>
           <ul className="space-y-1 text-sm text-text-secondary">
             <li className="flex items-start gap-2">
@@ -126,7 +126,7 @@ export function Onboarding({ forceShow, onDismiss }: OnboardingProps) {
         </div>
 
         {/* Privacy note */}
-        <div className="mb-6 flex items-start gap-2 rounded-xl bg-accent/5 p-3">
+        <div className="mb-4 flex items-start gap-2 rounded-xl bg-accent/5 p-3 sm:mb-6">
           <svg
             className="mt-0.5 h-5 w-5 shrink-0 text-accent"
             fill="none"
@@ -151,7 +151,7 @@ export function Onboarding({ forceShow, onDismiss }: OnboardingProps) {
         <button
           onClick={dismiss}
           className="w-full rounded-xl bg-accent py-3 font-semibold text-bg-primary transition-colors hover:bg-accent-dim focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-bg-secondary"
-          aria-label="Get started with EVMScope"
+          aria-label="Get started with PulseCam"
         >
           Get Started
         </button>

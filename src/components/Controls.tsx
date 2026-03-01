@@ -10,8 +10,6 @@ interface ControlsProps {
   devices: CameraDevice[];
   selectedDevice: string;
   onSelectDevice: (deviceId: string) => void;
-  showOverlay: boolean;
-  onToggleOverlay: () => void;
 }
 
 export function Controls({
@@ -24,76 +22,52 @@ export function Controls({
   devices,
   selectedDevice,
   onSelectDevice,
-  showOverlay,
-  onToggleOverlay,
 }: ControlsProps) {
-  if (!cameraActive) {
-    return (
-      <button
-        onClick={onStartCamera}
-        className="w-full rounded-xl bg-accent py-3 font-semibold text-bg-primary transition-colors hover:bg-accent-dim focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-bg-primary"
-        aria-label="Start camera"
-      >
-        Start Camera
-      </button>
-    );
-  }
-
   return (
-    <div className="flex items-center gap-2">
-      {/* Primary action */}
-      {!isRunning ? (
-        <button
-          onClick={onStartMeasure}
-          className="flex-1 rounded-xl bg-accent py-3 font-semibold text-bg-primary transition-colors hover:bg-accent-dim focus:outline-none focus:ring-2 focus:ring-accent"
-          aria-label="Start heart rate measurement"
-        >
-          Start Measuring
-        </button>
-      ) : (
-        <button
-          onClick={onStopMeasure}
-          className="flex-1 rounded-xl bg-pulse-red/90 py-3 font-semibold text-white transition-colors hover:bg-pulse-red focus:outline-none focus:ring-2 focus:ring-pulse-red"
-          aria-label="Stop heart rate measurement"
-        >
-          Stop
-        </button>
-      )}
-
-      {/* Camera off */}
+    <div className="flex items-center justify-center gap-2">
+      {/* Measurement toggle (power icon) */}
       <button
-        onClick={() => {
-          onStopMeasure();
-          onStopCamera();
-        }}
-        className="flex h-[46px] w-[46px] shrink-0 items-center justify-center rounded-xl border border-border/60 text-text-secondary/60 transition-colors hover:bg-bg-secondary hover:text-text-secondary"
-        aria-label="Turn off camera"
-        title="Turn off camera"
+        onClick={cameraActive ? (isRunning ? onStopMeasure : onStartMeasure) : undefined}
+        disabled={!cameraActive}
+        className={`flex h-[46px] w-[46px] shrink-0 items-center justify-center rounded-xl border transition-colors ${
+          isRunning
+            ? 'border-accent/30 bg-accent/10 text-accent hover:bg-accent/20'
+            : cameraActive
+              ? 'border-border/60 text-text-secondary/60 hover:bg-bg-secondary hover:text-text-secondary'
+              : 'border-border/30 text-text-secondary/20 cursor-not-allowed'
+        }`}
+        aria-label={isRunning ? 'Stop measuring' : 'Start measuring'}
+        title={isRunning ? 'Stop measuring' : 'Start measuring'}
       >
         <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M5.636 5.636a9 9 0 1 0 12.728 0M12 3v9" />
         </svg>
       </button>
 
-      {/* Overlay toggle */}
+      {/* Camera toggle */}
       <button
-        onClick={onToggleOverlay}
+        onClick={cameraActive ? onStopCamera : onStartCamera}
         className={`flex h-[46px] w-[46px] shrink-0 items-center justify-center rounded-xl border transition-colors ${
-          showOverlay
-            ? 'border-accent/30 bg-accent/10 text-accent'
+          cameraActive
+            ? 'border-border/60 text-text-secondary/60 hover:bg-bg-secondary hover:text-text-secondary'
             : 'border-border/60 text-text-secondary/60 hover:bg-bg-secondary hover:text-text-secondary'
         }`}
-        aria-label={showOverlay ? 'Hide face overlay' : 'Show face overlay'}
-        title={showOverlay ? 'Hide overlay' : 'Show overlay'}
+        aria-label={cameraActive ? 'Turn off camera' : 'Turn on camera'}
+        title={cameraActive ? 'Turn off camera' : 'Turn on camera'}
       >
         <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-          {showOverlay ? (
-            <>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
-            </>
+          {cameraActive ? (
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="m15.75 10.5 4.72-4.72a.75.75 0 0 1 1.28.53v11.38a.75.75 0 0 1-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 0 0 2.25-2.25v-9a2.25 2.25 0 0 0-2.25-2.25h-9A2.25 2.25 0 0 0 2.25 7.5v9a2.25 2.25 0 0 0 2.25 2.25Z"
+            />
           ) : (
-            <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="m15.75 10.5 4.72-4.72a.75.75 0 0 1 1.28.53v11.38a.75.75 0 0 1-1.28.53l-4.72-4.72M12 18.75H4.5a2.25 2.25 0 0 1-2.25-2.25V9m12.841 9.091L16.5 19.5m-1.409-1.409c.121-.12.233-.248.335-.383m-.335.383-6.838-6.838m.495-1.69 8.752 8.752m-8.752-8.752 3.095-3.095M4.862 4.487l14.958 14.958"
+            />
           )}
         </svg>
       </button>

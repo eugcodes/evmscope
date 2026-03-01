@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 
-const STORAGE_KEY = 'evmscope-onboarding-dismissed';
+const STORAGE_KEY = 'pulsecam-onboarding-dismissed';
 
 interface OnboardingProps {
   forceShow?: boolean;
@@ -56,7 +56,7 @@ export function Onboarding({ forceShow, onDismiss }: OnboardingProps) {
             </svg>
           </div>
           <h2 id="onboarding-title" className="text-2xl font-bold text-text-primary">
-            Welcome to EVMScope
+            Welcome to PulseCam
           </h2>
           <p className="mt-2 text-text-secondary">
             Measure your heart rate using just your camera — no contact required.
@@ -151,7 +151,7 @@ export function Onboarding({ forceShow, onDismiss }: OnboardingProps) {
         <button
           onClick={dismiss}
           className="w-full rounded-xl bg-accent py-3 font-semibold text-bg-primary transition-colors hover:bg-accent-dim focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-bg-secondary"
-          aria-label="Get started with EVMScope"
+          aria-label="Get started with PulseCam"
         >
           Get Started
         </button>

@@ -10,76 +10,87 @@ const GRID_COLOR = 'rgba(48, 54, 61, 0.3)';
 const BG_COLOR = '#0d1117';
 
 /**
- * Smooth-scrolling waveform with stable peaks.
+ * Smooth-scrolling waveform with rock-stable peaks.
  *
- * Two techniques keep the display rock-steady:
+ * **Fixed Y-axis (±2.8)**: Data is already normalized (zero mean, unit std).
+ * A fixed range means each value always maps to the same pixel.
  *
- * 1. **Fixed Y-axis (±2.8)**: The data is already normalized (zero mean,
- *    unit std), so a fixed range means each value always maps to the same
- *    pixel — no rescaling.
+ * **Append-only display buffer**: Old on-screen values are preserved from
+ * when they first entered. The DSP pipeline reruns filtfilt + normalize
+ * each snapshot, changing values everywhere, but we never overwrite
+ * existing display samples.
  *
- * 2. **Append-only display buffer**: The DSP pipeline reruns filtfilt +
- *    normalize over the full (growing) buffer every 500ms, which changes
- *    values at every position — even ones already on screen. To prevent
- *    that from causing visible jumps, we keep a persistent display buffer
- *    and only splice in the genuinely new samples at the right edge. Old
- *    on-screen values are preserved from when they first entered, so their
- *    y-position never changes.
- *
- * Between snapshots, a time-based scroll offset shifts the display left
- * at the natural data rate. When a new snapshot arrives the buffer shifts
- * left by the same amount and the scroll resets to 0, keeping visual
- * position continuous.
+ * **Drip-feed scrolling**: Instead of a time-based scroll offset that resets
+ * each snapshot (two clocks that inevitably disagree), new samples are
+ * queued and drained one at a time into the display buffer at the real
+ * sample rate. The scroll IS the data advancement — one unified clock.
+ * A fractional sub-pixel offset provides inter-sample smoothness.
+ * The display is ~250ms behind real-time (half the queue depth), which
+ * acts as a jitter buffer preventing stalls.
  */
-const WINDOW_DURATION_MS = 10_000;
 
-// Fixed Y-axis: normalized data (std=1) is centered at 0.
-// ±2.8 gives good visual fill for a typical pulse waveform (amplitude ≈ √2 ≈ 1.4)
-// while leaving headroom for occasional larger peaks.
 const Y_MIN = -2.8;
 const Y_MAX = 2.8;
 const Y_RANGE = Y_MAX - Y_MIN;
+const WINDOW_SEC = 10;
 
 export function WaveformChart({ waveform, isActive }: WaveformChartProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animRef = useRef<number>(0);
 
-  // Append-only display buffer: old on-screen values are preserved,
-  // only the right edge gets new data each snapshot.
+  // The actual rendered buffer — only mutated by the rAF drip-feed.
   const displayBufRef = useRef<Float64Array>(new Float64Array(0));
-  const lastUpdateRef = useRef<number>(0);
+  // Queue of new sample values waiting to be drained into the display.
+  const pendingRef = useRef<number[]>([]);
+  // Fractional sample accumulator for sub-pixel scrolling.
+  const subSampleRef = useRef(0);
+  // Timestamp of last rAF frame (for per-frame dt).
+  const lastFrameRef = useRef(0);
+  // Stable buffer length (= sampleRate × 10).
+  const bufLenRef = useRef(0);
+  // Timestamp of last waveform update (for estimating new-sample count).
+  const lastUpdateRef = useRef(0);
+
   const isActiveRef = useRef(isActive);
   isActiveRef.current = isActive;
 
+  // When a new waveform snapshot arrives, queue only the new samples.
   useEffect(() => {
     if (waveform.length === 0) return;
 
     const now = performance.now();
-    const oldBuf = displayBufRef.current;
+    const buf = displayBufRef.current;
 
-    if (oldBuf.length === 0) {
-      // First snapshot — use directly.
+    if (buf.length === 0) {
+      // First snapshot: load the full display buffer directly.
       displayBufRef.current = Float64Array.from(waveform);
+      bufLenRef.current = waveform.length;
+      lastFrameRef.current = now;
+    } else if (Math.abs(waveform.length - bufLenRef.current) > 2) {
+      // Buffer size changed (early growth phase or sample-rate change): snap.
+      displayBufRef.current = Float64Array.from(waveform);
+      bufLenRef.current = waveform.length;
+      pendingRef.current = [];
+      subSampleRef.current = 0;
     } else {
-      // Estimate how many new samples entered since last update.
+      // Stable size: estimate how many samples are new and queue them.
       const elapsed = lastUpdateRef.current > 0 ? now - lastUpdateRef.current : 0;
-      const shift = Math.max(1, Math.round((elapsed / WINDOW_DURATION_MS) * oldBuf.length));
+      const shift = Math.max(1, Math.round(
+        (elapsed / (WINDOW_SEC * 1000)) * bufLenRef.current,
+      ));
 
-      const newBuf = new Float64Array(waveform.length);
-      const preserveEnd = waveform.length - shift;
-
-      for (let i = 0; i < waveform.length; i++) {
-        if (i < preserveEnd) {
-          // Preserve old value (shifted left to align with new time index).
-          const srcIdx = i + shift;
-          newBuf[i] = srcIdx < oldBuf.length ? oldBuf[srcIdx] : waveform[i];
-        } else {
-          // Right edge: genuinely new data.
-          newBuf[i] = waveform[i];
-        }
+      const startIdx = Math.max(0, waveform.length - shift);
+      for (let i = startIdx; i < waveform.length; i++) {
+        pendingRef.current.push(waveform[i]);
       }
 
-      displayBufRef.current = newBuf;
+      // Safety cap: never let the queue exceed one window of data.
+      if (pendingRef.current.length > bufLenRef.current) {
+        pendingRef.current.splice(
+          0,
+          pendingRef.current.length - bufLenRef.current,
+        );
+      }
     }
 
     lastUpdateRef.current = now;
@@ -117,9 +128,9 @@ export function WaveformChart({ waveform, isActive }: WaveformChartProps) {
         ctx.stroke();
       }
 
-      const data = displayBufRef.current;
+      const buf = displayBufRef.current;
 
-      if (data.length < 2) {
+      if (buf.length < 2) {
         ctx.fillStyle = 'rgba(139, 148, 158, 0.4)';
         ctx.font = '13px -apple-system, sans-serif';
         ctx.textAlign = 'center';
@@ -132,16 +143,40 @@ export function WaveformChart({ waveform, isActive }: WaveformChartProps) {
         return;
       }
 
-      // ── Smooth scroll offset ──────────────────────────────────────────
-      const elapsed = lastUpdateRef.current > 0
-        ? now - lastUpdateRef.current
-        : 0;
-      const scrollPx = Math.min(elapsed / WINDOW_DURATION_MS, 0.1) * w;
+      // ── Drip-feed: drain pending samples at the real-time rate ────────
+      const dt = lastFrameRef.current > 0 ? now - lastFrameRef.current : 0;
+      lastFrameRef.current = now;
+
+      const sampleRate = bufLenRef.current / WINDOW_SEC;
+      const pending = pendingRef.current;
+
+      if (pending.length > 0) {
+        subSampleRef.current += (dt / 1000) * sampleRate;
+
+        const toDrain = Math.min(
+          Math.floor(subSampleRef.current),
+          pending.length,
+        );
+
+        if (toDrain > 0) {
+          subSampleRef.current -= toDrain;
+          // Shift buffer left by toDrain, append new samples at the right.
+          buf.copyWithin(0, toDrain);
+          for (let j = 0; j < toDrain; j++) {
+            buf[buf.length - toDrain + j] = pending[j];
+          }
+          pending.splice(0, toDrain);
+        }
+      } else {
+        // Queue empty — hold position until more data arrives.
+        subSampleRef.current = 0;
+      }
 
       // ── Draw waveform ─────────────────────────────────────────────────
       const padding = 12;
       const plotH = h - padding * 2;
-      const step = w / (data.length - 1);
+      const step = w / (buf.length - 1);
+      const fractPx = subSampleRef.current * step;
 
       ctx.shadowColor = LINE_COLOR;
       ctx.shadowBlur = 6;
@@ -151,9 +186,9 @@ export function WaveformChart({ waveform, isActive }: WaveformChartProps) {
       ctx.lineCap = 'round';
       ctx.beginPath();
 
-      for (let i = 0; i < data.length; i++) {
-        const x = i * step - scrollPx;
-        const clamped = Math.max(Y_MIN, Math.min(Y_MAX, data[i]));
+      for (let i = 0; i < buf.length; i++) {
+        const x = i * step - fractPx;
+        const clamped = Math.max(Y_MIN, Math.min(Y_MAX, buf[i]));
         const y = padding + plotH - ((clamped - Y_MIN) / Y_RANGE) * plotH;
         if (i === 0) ctx.moveTo(x, y);
         else ctx.lineTo(x, y);
@@ -166,9 +201,9 @@ export function WaveformChart({ waveform, isActive }: WaveformChartProps) {
       gradient.addColorStop(0, 'rgba(45, 212, 191, 0.08)');
       gradient.addColorStop(1, 'rgba(45, 212, 191, 0)');
 
-      const lastX = (data.length - 1) * step - scrollPx;
+      const lastX = (buf.length - 1) * step - fractPx;
       ctx.lineTo(lastX, h);
-      ctx.lineTo(-scrollPx, h);
+      ctx.lineTo(-fractPx, h);
       ctx.closePath();
       ctx.fillStyle = gradient;
       ctx.fill();

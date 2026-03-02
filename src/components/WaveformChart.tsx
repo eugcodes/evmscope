@@ -10,16 +10,26 @@ const GRID_COLOR = 'rgba(48, 54, 61, 0.3)';
 const BG_COLOR = '#0d1117';
 
 /**
- * The waveform displays 10 seconds of data. Data snapshots arrive every ~500ms,
- * shifting the window forward by ~15 samples. Between snapshots we continuously
- * scroll the waveform left by a time-based pixel offset so the motion appears
- * fluid rather than jumping in discrete steps.
+ * Smooth-scrolling waveform with stable peaks.
  *
- * The Y-axis uses a fixed range. The data is already normalized (zero mean,
- * unit variance) by the DSP pipeline, so values fall predictably within
- * about ±3. A fixed scale means nothing on screen ever rescales or morphs —
- * each sample maps to exactly one y-coordinate regardless of what the rest
- * of the data is doing.
+ * Two techniques keep the display rock-steady:
+ *
+ * 1. **Fixed Y-axis (±2.8)**: The data is already normalized (zero mean,
+ *    unit std), so a fixed range means each value always maps to the same
+ *    pixel — no rescaling.
+ *
+ * 2. **Append-only display buffer**: The DSP pipeline reruns filtfilt +
+ *    normalize over the full (growing) buffer every 500ms, which changes
+ *    values at every position — even ones already on screen. To prevent
+ *    that from causing visible jumps, we keep a persistent display buffer
+ *    and only splice in the genuinely new samples at the right edge. Old
+ *    on-screen values are preserved from when they first entered, so their
+ *    y-position never changes.
+ *
+ * Between snapshots, a time-based scroll offset shifts the display left
+ * at the natural data rate. When a new snapshot arrives the buffer shifts
+ * left by the same amount and the scroll resets to 0, keeping visual
+ * position continuous.
  */
 const WINDOW_DURATION_MS = 10_000;
 
@@ -34,17 +44,45 @@ export function WaveformChart({ waveform, isActive }: WaveformChartProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animRef = useRef<number>(0);
 
-  const dataRef = useRef<number[]>([]);
+  // Append-only display buffer: old on-screen values are preserved,
+  // only the right edge gets new data each snapshot.
+  const displayBufRef = useRef<Float64Array>(new Float64Array(0));
   const lastUpdateRef = useRef<number>(0);
   const isActiveRef = useRef(isActive);
   isActiveRef.current = isActive;
 
-  // When a new waveform snapshot arrives, stash it and record the time.
   useEffect(() => {
-    if (waveform.length > 0) {
-      dataRef.current = waveform;
-      lastUpdateRef.current = performance.now();
+    if (waveform.length === 0) return;
+
+    const now = performance.now();
+    const oldBuf = displayBufRef.current;
+
+    if (oldBuf.length === 0) {
+      // First snapshot — use directly.
+      displayBufRef.current = Float64Array.from(waveform);
+    } else {
+      // Estimate how many new samples entered since last update.
+      const elapsed = lastUpdateRef.current > 0 ? now - lastUpdateRef.current : 0;
+      const shift = Math.max(1, Math.round((elapsed / WINDOW_DURATION_MS) * oldBuf.length));
+
+      const newBuf = new Float64Array(waveform.length);
+      const preserveEnd = waveform.length - shift;
+
+      for (let i = 0; i < waveform.length; i++) {
+        if (i < preserveEnd) {
+          // Preserve old value (shifted left to align with new time index).
+          const srcIdx = i + shift;
+          newBuf[i] = srcIdx < oldBuf.length ? oldBuf[srcIdx] : waveform[i];
+        } else {
+          // Right edge: genuinely new data.
+          newBuf[i] = waveform[i];
+        }
+      }
+
+      displayBufRef.current = newBuf;
     }
+
+    lastUpdateRef.current = now;
   }, [waveform]);
 
   // Single persistent rAF loop — runs from mount to unmount.
@@ -79,7 +117,7 @@ export function WaveformChart({ waveform, isActive }: WaveformChartProps) {
         ctx.stroke();
       }
 
-      const data = dataRef.current;
+      const data = displayBufRef.current;
 
       if (data.length < 2) {
         ctx.fillStyle = 'rgba(139, 148, 158, 0.4)';
@@ -115,7 +153,6 @@ export function WaveformChart({ waveform, isActive }: WaveformChartProps) {
 
       for (let i = 0; i < data.length; i++) {
         const x = i * step - scrollPx;
-        // Fixed Y mapping: clamp to [Y_MIN, Y_MAX], no dynamic rescaling.
         const clamped = Math.max(Y_MIN, Math.min(Y_MAX, data[i]));
         const y = padding + plotH - ((clamped - Y_MIN) / Y_RANGE) * plotH;
         if (i === 0) ctx.moveTo(x, y);

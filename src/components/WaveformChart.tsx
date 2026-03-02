@@ -26,6 +26,10 @@ export function WaveformChart({ waveform, isActive }: WaveformChartProps) {
   const dataRef = useRef<number[]>([]);
   const lastUpdateRef = useRef<number>(0);
   const isActiveRef = useRef(isActive);
+
+  // Smoothed Y-axis range to prevent peaks from jumping when min/max change.
+  const displayMinRef = useRef<number | null>(null);
+  const displayMaxRef = useRef<number | null>(null);
   isActiveRef.current = isActive;
 
   // When a new waveform snapshot arrives, stash it and record the time.
@@ -97,11 +101,25 @@ export function WaveformChart({ waveform, isActive }: WaveformChartProps) {
       const plotH = h - padding * 2;
       const step = w / (data.length - 1);
 
-      let min = Infinity, max = -Infinity;
+      // Compute the true min/max of the current data snapshot.
+      let targetMin = Infinity, targetMax = -Infinity;
       for (const v of data) {
-        if (v < min) min = v;
-        if (v > max) max = v;
+        if (v < targetMin) targetMin = v;
+        if (v > targetMax) targetMax = v;
       }
+
+      // Smoothly lerp the displayed range toward the target each frame.
+      // This prevents peaks from jumping when the Y-axis rescales.
+      const lerpRate = 0.08; // per frame at 60fps → ~5 frame settling
+      if (displayMinRef.current === null) {
+        displayMinRef.current = targetMin;
+        displayMaxRef.current = targetMax;
+      } else {
+        displayMinRef.current += (targetMin - displayMinRef.current) * lerpRate;
+        displayMaxRef.current! += (targetMax - displayMaxRef.current!) * lerpRate;
+      }
+      const min = displayMinRef.current;
+      const max = displayMaxRef.current!;
       const range = max - min || 1;
 
       ctx.shadowColor = LINE_COLOR;

@@ -15,62 +15,36 @@ const BG_COLOR = '#0d1117';
  * scroll the waveform left by a time-based pixel offset so the motion appears
  * fluid rather than jumping in discrete steps.
  *
- * To eliminate vertical jumping, we maintain a separate display buffer that
- * lerps toward the target data each frame. When a new snapshot arrives, we
- * shift the display buffer left to align with the new time indices before
- * starting the lerp, so existing on-screen points stay in place. The Y-axis
- * min/max are derived from the smoothly-changing display buffer, so they
- * also change smoothly — no separate range smoothing is needed.
+ * The Y-axis uses a fixed range. The data is already normalized (zero mean,
+ * unit variance) by the DSP pipeline, so values fall predictably within
+ * about ±3. A fixed scale means nothing on screen ever rescales or morphs —
+ * each sample maps to exactly one y-coordinate regardless of what the rest
+ * of the data is doing.
  */
 const WINDOW_DURATION_MS = 10_000;
 
-// Per-frame lerp rate for displayed values.
-// At 60 fps: ~95% converged in 16 frames (~270 ms), well before next 500 ms snapshot.
-const LERP_RATE = 0.17;
-
-// Minimum Y range prevents noise amplification when the signal is very small.
-const MIN_Y_RANGE = 0.5;
+// Fixed Y-axis: normalized data (std=1) is centered at 0.
+// ±2.8 gives good visual fill for a typical pulse waveform (amplitude ≈ √2 ≈ 1.4)
+// while leaving headroom for occasional larger peaks.
+const Y_MIN = -2.8;
+const Y_MAX = 2.8;
+const Y_RANGE = Y_MAX - Y_MIN;
 
 export function WaveformChart({ waveform, isActive }: WaveformChartProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animRef = useRef<number>(0);
 
-  const targetRef = useRef<number[]>([]);
-  const displayRef = useRef<Float64Array>(new Float64Array(0));
+  const dataRef = useRef<number[]>([]);
   const lastUpdateRef = useRef<number>(0);
   const isActiveRef = useRef(isActive);
   isActiveRef.current = isActive;
 
-  // When a new waveform snapshot arrives, shift displayData to align with
-  // the new time indices (accounting for samples that scrolled off the left),
-  // then let the per-frame lerp smoothly converge to the new values.
+  // When a new waveform snapshot arrives, stash it and record the time.
   useEffect(() => {
-    if (waveform.length === 0) return;
-
-    const now = performance.now();
-    const display = displayRef.current;
-
-    if (display.length === 0) {
-      // First data — snap directly, no lerp needed.
-      displayRef.current = Float64Array.from(waveform);
-    } else {
-      // Estimate how many samples have scrolled since the last update.
-      const elapsed = lastUpdateRef.current > 0 ? now - lastUpdateRef.current : 0;
-      const shift = Math.round((elapsed / WINDOW_DURATION_MS) * display.length);
-
-      // Shift the old display buffer left so index i aligns with the same
-      // moment in time as waveform[i]. For indices beyond the old buffer,
-      // snap to the target so new data at the right edge appears immediately.
-      const aligned = new Float64Array(waveform.length);
-      for (let i = 0; i < waveform.length; i++) {
-        const srcIdx = i + shift;
-        aligned[i] = srcIdx < display.length ? display[srcIdx] : waveform[i];
-      }
-      displayRef.current = aligned;
+    if (waveform.length > 0) {
+      dataRef.current = waveform;
+      lastUpdateRef.current = performance.now();
     }
-
-    targetRef.current = waveform;
-    lastUpdateRef.current = now;
   }, [waveform]);
 
   // Single persistent rAF loop — runs from mount to unmount.
@@ -105,10 +79,9 @@ export function WaveformChart({ waveform, isActive }: WaveformChartProps) {
         ctx.stroke();
       }
 
-      const target = targetRef.current;
-      const display = displayRef.current;
+      const data = dataRef.current;
 
-      if (display.length < 2) {
+      if (data.length < 2) {
         ctx.fillStyle = 'rgba(139, 148, 158, 0.4)';
         ctx.font = '13px -apple-system, sans-serif';
         ctx.textAlign = 'center';
@@ -121,11 +94,6 @@ export function WaveformChart({ waveform, isActive }: WaveformChartProps) {
         return;
       }
 
-      // ── Lerp displayed values toward target each frame ────────────────
-      for (let i = 0; i < display.length && i < target.length; i++) {
-        display[i] += (target[i] - display[i]) * LERP_RATE;
-      }
-
       // ── Smooth scroll offset ──────────────────────────────────────────
       const elapsed = lastUpdateRef.current > 0
         ? now - lastUpdateRef.current
@@ -135,17 +103,7 @@ export function WaveformChart({ waveform, isActive }: WaveformChartProps) {
       // ── Draw waveform ─────────────────────────────────────────────────
       const padding = 12;
       const plotH = h - padding * 2;
-      const step = w / (display.length - 1);
-
-      // Min/max derived from the smoothly-changing display data.
-      let min = Infinity, max = -Infinity;
-      for (let i = 0; i < display.length; i++) {
-        if (display[i] < min) min = display[i];
-        if (display[i] > max) max = display[i];
-      }
-      const range = Math.max(max - min, MIN_Y_RANGE);
-      const mid = (min + max) / 2;
-      const yMin = mid - range / 2;
+      const step = w / (data.length - 1);
 
       ctx.shadowColor = LINE_COLOR;
       ctx.shadowBlur = 6;
@@ -155,9 +113,11 @@ export function WaveformChart({ waveform, isActive }: WaveformChartProps) {
       ctx.lineCap = 'round';
       ctx.beginPath();
 
-      for (let i = 0; i < display.length; i++) {
+      for (let i = 0; i < data.length; i++) {
         const x = i * step - scrollPx;
-        const y = padding + plotH - ((display[i] - yMin) / range) * plotH;
+        // Fixed Y mapping: clamp to [Y_MIN, Y_MAX], no dynamic rescaling.
+        const clamped = Math.max(Y_MIN, Math.min(Y_MAX, data[i]));
+        const y = padding + plotH - ((clamped - Y_MIN) / Y_RANGE) * plotH;
         if (i === 0) ctx.moveTo(x, y);
         else ctx.lineTo(x, y);
       }
@@ -169,7 +129,7 @@ export function WaveformChart({ waveform, isActive }: WaveformChartProps) {
       gradient.addColorStop(0, 'rgba(45, 212, 191, 0.08)');
       gradient.addColorStop(1, 'rgba(45, 212, 191, 0)');
 
-      const lastX = (display.length - 1) * step - scrollPx;
+      const lastX = (data.length - 1) * step - scrollPx;
       ctx.lineTo(lastX, h);
       ctx.lineTo(-scrollPx, h);
       ctx.closePath();

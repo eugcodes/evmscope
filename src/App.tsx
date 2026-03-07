@@ -24,7 +24,7 @@ export default function App() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-bg-primary">
+    <div className="flex h-screen flex-col bg-bg-primary">
       <Onboarding />
       {showHelp && (
         <Onboarding forceShow onDismiss={() => setShowHelp(false)} />

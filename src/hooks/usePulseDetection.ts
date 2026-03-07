@@ -23,6 +23,32 @@ export interface PulseDetectionResult {
 
 const PROCESS_INTERVAL_MS = 250; // Process every 250ms for faster convergence
 
+// ─── Frame scheduling ────────────────────────────────────────────────────────
+// Prefer requestVideoFrameCallback (fires once per decoded video frame from the
+// hardware decoder) over rAF (fires at display refresh rate, often processing
+// the same frame twice at 60Hz display / 30fps camera). Falls back to rAF on
+// browsers without support (Firefox).
+
+interface FrameHandle {
+  id: number;
+  rvfc: boolean;
+}
+
+function scheduleFrame(video: HTMLVideoElement, cb: () => void): FrameHandle {
+  if ('requestVideoFrameCallback' in video) {
+    return { id: video.requestVideoFrameCallback(cb), rvfc: true };
+  }
+  return { id: requestAnimationFrame(cb), rvfc: false };
+}
+
+function cancelFrame(handle: FrameHandle, video: HTMLVideoElement | null) {
+  if (handle.rvfc) {
+    video?.cancelVideoFrameCallback?.(handle.id);
+  } else {
+    cancelAnimationFrame(handle.id);
+  }
+}
+
 // ─── Reducer ─────────────────────────────────────────────────────────────────
 
 interface PulseState {
@@ -105,7 +131,7 @@ export function usePulseDetection(
   const [s, dispatch] = useReducer(pulseReducer, INITIAL_STATE);
 
   const workerRef = useRef<Worker | null>(null);
-  const rafRef = useRef<number>(0);
+  const frameRef = useRef<FrameHandle>({ id: 0, rvfc: false });
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const sampleCountRef = useRef(0);
   const lastTimestampRef = useRef(0);
@@ -151,7 +177,7 @@ export function usePulseDetection(
       const video = videoRef.current;
       if (!video || !workerRef.current || !canvasRef.current) return;
       if (video.readyState < 2) {
-        rafRef.current = requestAnimationFrame(() => captureFrameRef.current?.());
+        frameRef.current = { id: requestAnimationFrame(() => captureFrameRef.current?.()), rvfc: false };
         return;
       }
 
@@ -199,7 +225,7 @@ export function usePulseDetection(
         shouldProcess,
       } satisfies WorkerMessage);
 
-      rafRef.current = requestAnimationFrame(() => captureFrameRef.current?.());
+      frameRef.current = scheduleFrame(video, () => captureFrameRef.current?.());
     };
   }, [videoRef]);
 
@@ -227,34 +253,33 @@ export function usePulseDetection(
     // Reset worker buffer
     workerRef.current?.postMessage({ type: 'reset' } satisfies WorkerMessage);
 
-    // Start capture loop (process trigger is inside captureFrame)
-    rafRef.current = requestAnimationFrame(() => captureFrameRef.current?.());
+    // Start capture loop — initial kick uses rAF since video may not be ready
+    frameRef.current = { id: requestAnimationFrame(() => captureFrameRef.current?.()), rvfc: false };
   }, [cameraActive]);
 
   const stop = useCallback(() => {
-    cancelAnimationFrame(rafRef.current);
+    cancelFrame(frameRef.current, videoRef.current);
     dispatch({ type: 'stop' });
     resetRefs();
-  }, []);
+  }, [videoRef]);
 
   // Cleanup
   useEffect(() => {
+    const video = videoRef.current;
     return () => {
-      cancelAnimationFrame(rafRef.current);
+      cancelFrame(frameRef.current, video);
       destroyFaceDetection();
     };
-  }, []);
+  }, [videoRef]);
 
   // Stop measurement when camera goes inactive.
-  // Side effects (cancel rAF, reset worker) belong in an effect; state is synced
-  // to the external camera-active signal, so the setState calls are justified.
   useEffect(() => {
     if (!cameraActive && s.isRunning) {
-      cancelAnimationFrame(rafRef.current);
+      cancelFrame(frameRef.current, videoRef.current);
       dispatch({ type: 'stop' });
       resetRefs();
     }
-  }, [cameraActive, s.isRunning]);
+  }, [cameraActive, s.isRunning, videoRef]);
 
   return {
     state: s.state,
